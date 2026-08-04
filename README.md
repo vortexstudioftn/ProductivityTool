@@ -20,6 +20,8 @@ distraction : tout vit dans votre navigateur.
 - **Progression** — tâches terminées, sessions et minutes de focus du jour, et la série 🔥 de
   jours actifs consécutifs pour entretenir… l'élan.
 - **Local d'abord** — persistance en `localStorage`, aucune donnée ne quitte la machine.
+- **Installable (PWA)** — manifeste et service worker : Élan s'ajoute à l'écran d'accueil du
+  téléphone et fonctionne hors-ligne dès la première visite.
 - **Confort** — thèmes clair et sombre (selon le système), interface responsive, en français.
 
 ## Démarrer
@@ -37,6 +39,30 @@ npm run build      # vérification TypeScript + build de production dans dist/
 npm run preview    # sert le build de production
 ```
 
+## Sur téléphone
+
+Chaque poussée sur la branche principale déclenche les tests puis un déploiement automatique
+sur GitHub Pages :
+
+**<https://vortexstudioftn.github.io/ProductivityTool/>**
+
+Ouvrez cette adresse sur le téléphone, puis installez Élan comme une app :
+
+- **Android (Chrome)** : menu ⋮ → « Installer l'application » (ou « Ajouter à l'écran d'accueil »)
+- **iPhone / iPad (Safari)** : bouton Partager → « Sur l'écran d'accueil »
+
+Élan s'ouvre alors en plein écran avec son icône ⚡ et reste utilisable hors-ligne (stratégie
+« réseau d'abord, cache en secours »).
+
+> Les données vivent dans le navigateur de chaque appareil : le téléphone et l'ordinateur ont
+> chacun leur propre liste. La synchronisation entre appareils est une piste pour la suite.
+
+Pour essayer sans déployer, téléphone et ordinateur sur le même Wi-Fi :
+
+```bash
+npm run dev -- --host    # puis ouvrir http://<IP-de-l'ordinateur>:5173 sur le téléphone
+```
+
 ## Stack
 
 React 19 · Vite 8 · TypeScript 7 · Vitest 4. Aucune dépendance d'exécution en dehors de React.
@@ -44,6 +70,10 @@ React 19 · Vite 8 · TypeScript 7 · Vitest 4. Aucune dépendance d'exécution 
 ## Structure
 
 ```
+public/
+  manifest.webmanifest  identité PWA (nom, icônes, couleurs)
+  sw.js                 service worker hors-ligne
+  icons/                icônes d'application
 src/
   App.tsx               assemblage de l'écran + persistance + changement de jour
   components/
@@ -74,7 +104,6 @@ données de site) remet l'application à zéro.
 
 - Vue semaine et historique des journées passées
 - Réglages du minuteur (durées, son, démarrage automatique)
-- PWA installable et utilisable hors-ligne
+- Synchronisation entre appareils (aujourd'hui, chaque navigateur garde ses données)
 - Export / import JSON des données
 - Tests bout-en-bout (Playwright)
-- Déploiement automatique (GitHub Pages)
