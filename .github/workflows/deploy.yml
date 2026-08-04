@@ -27,6 +27,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --base=/ProductivityTool/
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -46,8 +49,12 @@ jobs:
         uses: actions/deploy-pages@v4
 
   vps:
+    # Non-bloquant tant que le sshd du serveur refuse la clé (config à
+    # corriger côté serveur) : le job réessaie à chaque poussée sans faire
+    # échouer le pipeline.
     name: Déploiement VPS
     runs-on: ubuntu-latest
+    continue-on-error: true
     env:
       VPS_HOST: 72.62.20.72
     steps:
