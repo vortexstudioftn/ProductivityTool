@@ -51,14 +51,14 @@ jobs:
     env:
       VPS_HOST: 72.62.20.72
     steps:
-      - name: Contrôle du secret VPS_PASSWORD
+      - name: Contrôle du secret VPS_SSH_KEY
         id: secret
         env:
-          PRESENT: ${{ secrets.VPS_PASSWORD != '' }}
+          PRESENT: ${{ secrets.VPS_SSH_KEY != '' }}
         run: |
           echo "ok=$PRESENT" >> "$GITHUB_OUTPUT"
           if [ "$PRESENT" != "true" ]; then
-            echo "::notice title=Déploiement VPS ignoré::Ajoutez le secret VPS_PASSWORD (Settings → Secrets and variables → Actions) pour activer le déploiement."
+            echo "::notice title=Déploiement VPS ignoré::Ajoutez le secret VPS_SSH_KEY (clé privée autorisée sur le serveur) pour activer le déploiement."
           fi
       - uses: actions/checkout@v4
         if: steps.secret.outputs.ok == 'true'
@@ -76,13 +76,14 @@ jobs:
       - name: Copier le site et provisionner nginx
         if: steps.secret.outputs.ok == 'true'
         env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq sshpass
+          umask 077
+          printf '%s\n' "$VPS_SSH_KEY" > /tmp/elan_key
           tar -C dist -czf site.tar.gz .
-          sshpass -e scp -o StrictHostKeyChecking=accept-new site.tar.gz "root@$VPS_HOST:/tmp/elan-site.tar.gz"
-          sshpass -e ssh -o StrictHostKeyChecking=accept-new "root@$VPS_HOST" "VPS_HOST='$VPS_HOST' bash -s" < deploy/vps-provision.sh
+          scp -i /tmp/elan_key -o StrictHostKeyChecking=accept-new site.tar.gz "root@$VPS_HOST:/tmp/elan-site.tar.gz"
+          ssh -i /tmp/elan_key -o StrictHostKeyChecking=accept-new "root@$VPS_HOST" "VPS_HOST='$VPS_HOST' bash -s" < deploy/vps-provision.sh
+          rm -f /tmp/elan_key
       - name: Vérifier que le site répond
         if: steps.secret.outputs.ok == 'true'
         run: |
