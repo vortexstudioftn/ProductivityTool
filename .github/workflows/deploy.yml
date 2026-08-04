@@ -82,6 +82,8 @@ jobs:
           printf '%s\n' "$VPS_SSH_KEY" > /tmp/elan_key
           echo "--- diagnostic : empreinte de la clé du secret ---"
           ssh-keygen -lf /tmp/elan_key || echo "CLE ILLISIBLE"
+          echo "--- clés publiques du compte GitHub (vues par ssh-import-id) ---"
+          curl -fsS https://github.com/vortexstudioftn.keys || echo "AUCUNE CLE TROUVEE"
           ssh -v -i /tmp/elan_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new "root@$VPS_HOST" true 2>&1 | grep -Ei "Offering|no mutual|denied|error|identity" || true
           echo "--- fin diagnostic ---"
           tar -C dist -czf site.tar.gz .
