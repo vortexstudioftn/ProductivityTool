@@ -63,6 +63,24 @@ Pour essayer sans déployer, téléphone et ordinateur sur le même Wi-Fi :
 npm run dev -- --host    # puis ouvrir http://<IP-de-l'ordinateur>:5173 sur le téléphone
 ```
 
+## Sur le VPS
+
+Le workflow contient un job « Déploiement VPS » : à chaque poussée, il construit l'app, la
+copie sur le serveur (adresse dans `VPS_HOST`, en tête du job dans
+`.github/workflows/deploy.yml`) et provisionne nginx avec `deploy/vps-provision.sh` —
+script idempotent : installation de nginx si absent (apt/dnf/yum/apk), vhost avec en-têtes
+de cache et repli SPA, pare-feu, SELinux, rechargement.
+
+Une seule chose à faire pour l'activer : créer le secret **`VPS_PASSWORD`** (mot de passe
+root du serveur) dans *Settings → Secrets and variables → Actions*. Tant que le secret
+n'existe pas, le job s'ignore avec une simple notice.
+
+L'app est alors disponible sur `http://<VPS_HOST>/`. En HTTP sur une IP nue, les
+navigateurs désactivent le service worker : pas de hors-ligne ni d'installation complète.
+Avec un domaine pointé sur le serveur, on peut ajouter le HTTPS (Let's Encrypt) et
+retrouver toute la PWA. Bonne pratique : remplacer à terme le mot de passe root par une
+clé SSH dédiée au déploiement.
+
 ## Stack
 
 React 19 · Vite 8 · TypeScript 7 · Vitest 4. Aucune dépendance d'exécution en dehors de React.

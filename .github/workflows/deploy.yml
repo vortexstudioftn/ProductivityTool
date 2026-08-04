@@ -1,4 +1,4 @@
-name: Tests et déploiement GitHub Pages
+name: Tests et déploiements
 
 on:
   push:
@@ -11,11 +11,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: deploiements
   cancel-in-progress: true
 
 jobs:
-  build:
+  pages-build:
+    name: Tests + build Pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,19 +27,66 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build -- --base=/ProductivityTool/
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  deploy:
-    needs: build
+  pages-deploy:
+    # Échoue tant que Pages n'est pas activé dans Settings → Pages
+    # (source « GitHub Actions ») ; n'empêche pas le reste de passer.
+    name: GitHub Pages (optionnel)
+    needs: pages-build
     runs-on: ubuntu-latest
+    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  vps:
+    name: Déploiement VPS
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: 72.62.20.72
+    steps:
+      - name: Contrôle du secret VPS_PASSWORD
+        id: secret
+        env:
+          PRESENT: ${{ secrets.VPS_PASSWORD != '' }}
+        run: |
+          echo "ok=$PRESENT" >> "$GITHUB_OUTPUT"
+          if [ "$PRESENT" != "true" ]; then
+            echo "::notice title=Déploiement VPS ignoré::Ajoutez le secret VPS_PASSWORD (Settings → Secrets and variables → Actions) pour activer le déploiement."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.secret.outputs.ok == 'true'
+        run: npm ci
+      - if: steps.secret.outputs.ok == 'true'
+        run: npm test
+      - if: steps.secret.outputs.ok == 'true'
+        run: npm run build
+      - name: Copier le site et provisionner nginx
+        if: steps.secret.outputs.ok == 'true'
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass
+          tar -C dist -czf site.tar.gz .
+          sshpass -e scp -o StrictHostKeyChecking=accept-new site.tar.gz "root@$VPS_HOST:/tmp/elan-site.tar.gz"
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "root@$VPS_HOST" "VPS_HOST='$VPS_HOST' bash -s" < deploy/vps-provision.sh
+      - name: Vérifier que le site répond
+        if: steps.secret.outputs.ok == 'true'
+        run: |
+          sleep 2
+          curl -fsS --max-time 20 "http://$VPS_HOST/" | grep -q "Élan"
+          curl -fsS --max-time 20 -o /dev/null "http://$VPS_HOST/manifest.webmanifest"
+          echo "Élan répond sur http://$VPS_HOST/"
